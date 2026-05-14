@@ -1,278 +1,252 @@
 'use client';
 
-import { useFootballStore } from '@/hooks/use-football-store';
+import React, { useState } from 'react';
+import { AuthButton } from '@/components/auth-button';
+import { Logo } from '@/components/logo';
 import { AddPlayerForm } from '@/components/add-player-form';
 import { PlayerCard } from '@/components/player-card';
-import { useState } from 'react';
+import { TeamCard } from '@/components/team-card';
+import { BracketsView } from '@/components/brackets-view';
+import { TournamentView } from '@/components/tournament-view';
+import { useFootballStore } from '@/hooks/use-football-store';
 import { Team } from '@/types/football';
-import { Trophy, Users, LayoutGrid, RotateCcw, ShieldCheck, AlertCircle, Sparkles } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { StarRating } from '@/components/star-rating';
-import { Logo } from '@/components/logo';
+import { Trash2, RotateCcw, AlertCircle, ChevronRight, Minus, Plus, Trophy } from 'lucide-react';
+
+type View = 'draw' | 'brackets' | 'tournament';
 
 export default function Home() {
   const {
     players,
+    tournament,
     addPlayer,
+    bulkAddPlayers,
     removePlayer,
     togglePlayerActive,
     updatePlayerRating,
+    renamePlayer,
+    clearAllPlayers,
+    seedPlayers,
     drawTeams,
-    isLoaded
+    generateTournament,
+    updateMatchScore,
+    resetTournament,
+    isLoaded,
+    user
   } = useFootballStore();
 
   const [numTeams, setNumTeams] = useState(2);
-  const [perTeam, setPerTeam] = useState(5);
-  const [result, setResult] = useState<Team[] | null>(null);
+  const [playersPerTeam, setPlayersPerTeam] = useState(5);
+  const [generatedTeams, setGeneratedTeams] = useState<Team[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const activePlayers = players.filter(p => p.isActive);
-  const goalkeepers = activePlayers.filter(p => p.type === 'goalkeeper');
-  const fieldPlayers = activePlayers.filter(p => p.type === 'player');
+  const [view, setView] = useState<View>(tournament ? 'tournament' : 'draw');
 
   const handleDraw = () => {
-    const outcome = drawTeams(numTeams, perTeam);
-    if (typeof outcome === 'string') {
-      setError(outcome);
-      setResult(null);
+    const result = drawTeams(numTeams, playersPerTeam);
+    if (typeof result === 'string') {
+      setError(result);
+      setGeneratedTeams(null);
     } else {
-      setResult(outcome);
+      setGeneratedTeams(result);
       setError(null);
+      setView('draw');
     }
   };
 
-  if (!isLoaded) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950">
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-      >
-        <RotateCcw className="text-green-500" size={40} />
-      </motion.div>
-    </div>
-  );
+  const handleSeed = async () => {
+    await seedPlayers();
+  };
+
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-950">
+        <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-950 text-slate-200">
-      {/* Sidebar: Player Database */}
+    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-950 text-slate-200 overflow-x-hidden">
+      {/* Sidebar */}
       <aside className="w-full lg:w-80 bg-slate-900 border-r border-slate-800 flex flex-col lg:h-screen lg:sticky lg:top-0 overflow-hidden">
-        <div className="p-6 border-b border-slate-800 shrink-0">
+        <div className="p-6 border-b border-slate-800 shrink-0 space-y-4">
           <Logo />
-          <p className="text-[10px] text-slate-500 mt-2 uppercase tracking-widest font-bold">Banco de Dados de Jogadores</p>
+          <AuthButton user={user} />
+          <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Banco de Dados</p>
         </div>
 
-        {/* Quick Add Form Section */}
-        <div className="p-4 overflow-y-auto custom-scrollbar flex-1 space-y-6">
-          <section className="space-y-4">
-            <AddPlayerForm onAdd={addPlayer} />
-          </section>
-
-          <section className="space-y-3 pb-4">
-             <div className="flex items-center justify-between px-1">
-                <h2 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                  Jogadores ({players.length})
-                </h2>
-                <div className="flex gap-2 text-[8px] uppercase font-bold text-slate-600">
-                  <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Ativos</span>
-                </div>
-             </div>
-
+        <div className="p-6 flex-1 overflow-y-auto space-y-6">
+          <AddPlayerForm onAdd={addPlayer} onBulkAdd={bulkAddPlayers} />
+          
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                Jogadores ({players.length})
+              </h2>
+              {players.length > 0 && (
+                <button 
+                  onClick={clearAllPlayers}
+                  className="text-[8px] font-black uppercase tracking-widest text-red-500 hover:text-red-400 flex items-center gap-1 transition-colors"
+                >
+                  <Trash2 size={8} />
+                  Retirar Todos
+                </button>
+              )}
+            </div>
             <div className="space-y-2">
-              <AnimatePresence mode="popLayout">
-                {players.length === 0 ? (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center py-8 border border-dashed border-slate-800 rounded-2xl"
-                  >
-                    <p className="text-slate-600 text-xs italic">Nenhum jogador cadastrado.</p>
-                  </motion.div>
-                ) : (
-                  [...players].sort((a,b) => b.createdAt - a.createdAt).map((p) => (
-                    <PlayerCard
-                      key={p.id}
-                      player={p}
-                      onRemove={removePlayer}
-                      onToggle={togglePlayerActive}
-                      onRate={updatePlayerRating}
-                    />
-                  ))
-                )}
-              </AnimatePresence>
+              {players.map(player => (
+                <PlayerCard 
+                  key={player.id} 
+                  player={player} 
+                  onToggle={() => togglePlayerActive(player.id)}
+                  onRemove={() => removePlayer(player.id)}
+                  onRate={(r) => updatePlayerRating(player.id, r)}
+                  onRename={(name) => renamePlayer(player.id, name)}
+                />
+              ))}
+
+              {players.length === 0 && (
+                <button 
+                  onClick={handleSeed}
+                  className="w-full py-6 border-2 border-dashed border-slate-800 rounded-3xl text-[10px] font-black uppercase tracking-widest text-slate-500 hover:border-green-500/50 hover:text-green-500 transition-all flex flex-col items-center gap-3 group"
+                >
+                  <div className="p-3 bg-slate-900 rounded-2xl group-hover:bg-green-500/10 group-hover:scale-110 transition-all">
+                    <RotateCcw size={20} className="group-hover:rotate-180 transition-transform duration-500" />
+                  </div>
+                  Restaurar Lista Padrão
+                </button>
+              )}
             </div>
-          </section>
-        </div>
-        
-        {/* Sidebar Footer Stats */}
-        <div className="p-4 bg-slate-900/50 border-t border-slate-800 grid grid-cols-2 gap-2">
-            <div className="bg-slate-950 p-2 rounded-lg border border-slate-800/50">
-              <p className="text-slate-500 text-[8px] font-bold uppercase tracking-tighter leading-none mb-1">Linha</p>
-              <p className="text-sm font-black text-white">{fieldPlayers.length} <span className="text-[10px] text-slate-600">/ {players.filter(p => p.type === 'player').length}</span></p>
-            </div>
-            <div className="bg-slate-950 p-2 rounded-lg border border-slate-800/50">
-              <p className="text-slate-500 text-[8px] font-bold uppercase tracking-tighter leading-none mb-1">Goleiros</p>
-              <p className="text-sm font-black text-blue-400">{goalkeepers.length} <span className="text-[10px] text-slate-600">/ {players.filter(p => p.type === 'goalkeeper').length}</span></p>
-            </div>
+          </div>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col p-6 lg:p-10 overflow-y-auto custom-scrollbar">
-        {/* Configuration Header */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 bg-slate-900 p-8 rounded-3xl border border-slate-800 shadow-2xl relative overflow-hidden group">
-          {/* Subtle background decoration */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-green-600/5 blur-3xl -translate-y-1/2 translate-x-1/2" />
-          
-          <div className="space-y-3">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block">Qtd. de Times</label>
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={() => setNumTeams(Math.max(2, numTeams - 1))}
-                className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-xl font-bold hover:bg-slate-700 transition-colors"
-              >-</button>
-              <span className="text-3xl font-display font-black text-white w-8 text-center">{numTeams}</span>
-              <button 
-                onClick={() => setNumTeams(numTeams + 1)}
-                className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-xl font-bold hover:bg-slate-700 transition-colors"
-              >+</button>
-            </div>
-          </div>
-
-          <div className="space-y-3 md:border-x md:border-slate-800 md:px-10">
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block">Linha / Time (+ Goleiro)</label>
-            <div className="flex items-center gap-4">
-              <button 
-                onClick={() => setPerTeam(Math.max(2, perTeam - 1))}
-                className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-xl font-bold hover:bg-slate-700 transition-colors"
-              >-</button>
-              <span className="text-3xl font-display font-black text-white w-8 text-center">{perTeam}</span>
-              <button 
-                onClick={() => setPerTeam(perTeam + 1)}
-                className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-xl font-bold hover:bg-slate-700 transition-colors"
-              >+</button>
-            </div>
-            <p className="text-[9px] text-slate-600 font-bold uppercase italic text-center">Cada time terá {perTeam} na linha + 1 no gol</p>
-          </div>
-
-          <div className="flex flex-col justify-center">
-            <button 
-              onClick={handleDraw}
-              className="h-14 bg-green-600 hover:bg-green-500 text-white font-black rounded-2xl shadow-xl shadow-green-950/20 flex items-center justify-center gap-3 transition-all active:scale-[0.97] uppercase tracking-widest text-sm"
-            >
-              <RotateCcw className="w-5 h-5" />
-              SORTEAR AGORA
-            </button>
-          </div>
-        </section>
-
-        {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8 bg-red-500/10 border border-red-500/20 p-5 rounded-2xl flex items-start gap-3"
-          >
-            <AlertCircle className="text-red-500 shrink-0" size={20} />
-            <p className="text-red-400 text-sm font-bold uppercase tracking-tight">{error}</p>
-          </motion.div>
-        )}
-
-        {/* Results Grid */}
-        <div className="flex-1">
-          <AnimatePresence mode="wait">
-            {!result ? (
-              <motion.div 
-                key="empty"
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }}
-                className="h-full min-h-[300px] flex flex-col items-center justify-center text-center space-y-4 rounded-[40px] border-2 border-dashed border-slate-900"
-              >
-                <div className="bg-slate-900 p-6 rounded-full">
-                  <LayoutGrid size={48} className="text-slate-800" />
+      {/* Main Content */}
+      <main className="flex-1 p-4 lg:p-8 overflow-y-auto bg-slate-950">
+        <div className="max-w-4xl mx-auto space-y-8">
+          {view === 'draw' ? (
+            <div className="space-y-8">
+              <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-slate-900 border border-slate-800 p-6 rounded-3xl">
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-display font-black tracking-tighter text-white uppercase italic">
+                    MONTAR <span className="text-green-500">PELADA</span>
+                  </h2>
+                  <p className="text-slate-400 text-sm">Organize seu racha com transparência e equilíbrio.</p>
                 </div>
-                <div>
-                  <h3 className="text-slate-600 font-display font-bold text-lg">Nenhum sorteio realizado</h3>
-                  <p className="text-slate-700 text-sm max-w-xs">Configure acima e clique em Sortear para ver a divisão dos times.</p>
+                
+                <div className="flex items-center gap-4 bg-slate-950/50 p-2 rounded-2xl border border-slate-800">
+                  <div className="flex flex-col gap-1 px-4">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Times</span>
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => setNumTeams(Math.max(2, numTeams - 1))}
+                        className="p-1 hover:bg-slate-800 rounded-md transition-colors text-slate-400 hover:text-green-500"
+                      >
+                        <Minus size={16} />
+                      </button>
+                      <span className="text-xl font-black text-green-500 min-w-[1.5rem] text-center">{numTeams}</span>
+                      <button 
+                        onClick={() => setNumTeams(numTeams + 1)}
+                        className="p-1 hover:bg-slate-800 rounded-md transition-colors text-slate-400 hover:text-green-500"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="w-px h-10 bg-slate-800" />
+                  <div className="flex flex-col gap-1 px-4">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase">Jogadores / Time</span>
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={() => setPlayersPerTeam(Math.max(1, playersPerTeam - 1))}
+                        className="p-1 hover:bg-slate-800 rounded-md transition-colors text-slate-400 hover:text-green-500"
+                      >
+                        <Minus size={16} />
+                      </button>
+                      <span className="text-xl font-black text-green-500 min-w-[1.5rem] text-center">{playersPerTeam}</span>
+                      <button 
+                        onClick={() => setPlayersPerTeam(playersPerTeam + 1)}
+                        className="p-1 hover:bg-slate-800 rounded-md transition-colors text-slate-400 hover:text-green-500"
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="results"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+              </header>
+
+              <button 
+                onClick={handleDraw}
+                className="w-full py-6 bg-green-600 hover:bg-green-500 text-slate-950 font-display font-black text-xl uppercase tracking-widest rounded-3xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 group"
               >
-                {result.map((team, idx) => (
-                  <motion.div
-                    key={team.id}
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="bg-slate-900/50 border border-slate-800 rounded-3xl overflow-hidden shadow-lg flex flex-col"
-                  >
-                    <div className="bg-slate-800/80 p-5 flex justify-between items-center border-b border-slate-800">
-                      <div>
-                        <h3 className="font-display font-black text-white uppercase tracking-wider">{team.name}</h3>
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Nível Total: {team.totalRating}</p>
-                      </div>
-                      <div className="bg-green-500/10 text-green-500 px-2 py-1 rounded text-[10px] font-black tracking-tighter">
-                        TEAM {idx + 1}
-                      </div>
-                    </div>
-                    <div className="p-5 flex-1 space-y-2">
-                      {team.players.map((p) => (
-                        <div 
-                          key={p.id} 
-                          className="flex justify-between items-center p-3 bg-slate-950/40 rounded-xl border border-slate-800/50 transition-hover hover:border-slate-700"
-                        >
-                          <div className="flex items-center gap-3 truncate">
-                            {p.type === 'goalkeeper' ? (
-                              <div className="w-6 h-6 rounded bg-blue-500/20 text-blue-400 flex items-center justify-center text-[8px] font-black shrink-0">GK</div>
-                            ) : (
-                              <div className="w-6 h-6 rounded bg-slate-800 text-slate-500 flex items-center justify-center text-[8px] font-black shrink-0">LIN</div>
-                            )}
-                            <span className="text-sm font-bold text-slate-300 truncate">{p.name}</span>
-                          </div>
-                          <StarRating rating={p.rating} max={p.type === 'player' ? 5 : 3} readOnly />
-                        </div>
-                      ))}
-                    </div>
-                  </motion.div>
+                <div className="group-hover:rotate-180 transition-transform duration-500">
+                  <RotateCcw />
+                </div>
+                Sortear Equipes
+              </button>
+
+              {error && (
+                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 text-red-400 text-sm">
+                  <AlertCircle size={20} />
+                  {error}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {generatedTeams?.map((team, idx) => (
+                  <TeamCard key={`${team.name}-${idx}`} team={team} index={idx} />
                 ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </div>
+
+              {generatedTeams && generatedTeams.length > 0 && (
+                <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
+                  <button 
+                    onClick={() => {
+                      generateTournament(generatedTeams);
+                      setView('tournament');
+                    }}
+                    className="flex items-center justify-center gap-3 px-8 py-4 bg-green-600 text-slate-950 font-display font-black uppercase tracking-widest rounded-2xl hover:bg-green-500 transition-all shadow-lg shadow-green-500/20 group"
+                  >
+                    <Trophy size={20} />
+                    Iniciar Campeonato
+                  </button>
+                  
+                  <button 
+                    onClick={() => setView('brackets')}
+                    className="flex items-center justify-center gap-2 px-8 py-4 bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 font-display font-black uppercase tracking-widest rounded-2xl transition-all group"
+                  >
+                    Chaveamento Simples
+                    <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : view === 'brackets' ? (
+            <div>
+              <BracketsView 
+                teams={generatedTeams || []} 
+                onBack={() => setView('draw')} 
+              />
+            </div>
+          ) : (
+            <TournamentView 
+              tournament={tournament!}
+              onUpdateScore={updateMatchScore}
+              onBack={() => setView('draw')}
+              onReset={resetTournament}
+            />
+          )}
         </div>
 
-        {/* Footer Status */}
-        <footer className="mt-10 py-6 border-t border-slate-900 flex flex-col sm:flex-row justify-between items-center text-slate-500 text-[10px] gap-4 font-bold tracking-widest uppercase">
-          <div className="flex gap-6">
-            <span>Jogadores Ativos: <b className="text-green-500">{activePlayers.length}</b></span>
-            <span>Nível Médio: <b className="text-white">
-              {activePlayers.length > 0 ? (activePlayers.reduce((acc, curr) => acc + curr.rating, 0) / activePlayers.length).toFixed(1) : '0.0'}
-            </b></span>
+        <footer className="mt-20 border-t border-slate-900 pt-8 pb-12 flex flex-col md:flex-row items-center justify-between gap-6 text-[10px] text-slate-600 uppercase font-bold tracking-[0.2em]">
+          <div className="flex items-center gap-4">
+             <Logo />
           </div>
           <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 border border-slate-800 rounded-full">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-            Sincronizado com Memória Local
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+            Banco de Dados Global Ativo
           </div>
         </footer>
       </main>
-
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #1e293b;
-          border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #334155;
-        }
-      `}</style>
     </div>
   );
 }

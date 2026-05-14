@@ -1,94 +1,123 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Shield, Users } from 'lucide-react';
+import React, { useState } from 'react';
+import { Sparkles, UserPlus, Star } from 'lucide-react';
 import { PlayerType } from '@/types/football';
-import { StarRating } from './star-rating';
-import { motion } from 'motion/react';
 
 interface AddPlayerFormProps {
   onAdd: (name: string, type: PlayerType, rating: number) => void;
+  onBulkAdd: (names: string[], type: PlayerType, rating: number) => void;
 }
 
-export function AddPlayerForm({ onAdd }: AddPlayerFormProps) {
+export function AddPlayerForm({ 
+  onAdd, 
+  onBulkAdd 
+}: AddPlayerFormProps) {
   const [name, setName] = useState('');
+  const [bulkNames, setBulkNames] = useState('');
+  const [isBulk, setIsBulk] = useState(false);
   const [type, setType] = useState<PlayerType>('player');
   const [rating, setRating] = useState(3);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
-    onAdd(name, type, rating);
-    setName('');
-    // Reset defaults based on type
-    setRating(type === 'player' ? 3 : 2);
+    if (isBulk) {
+      const names = bulkNames
+        .split(/[\n,]+/)
+        .map(n => n.trim())
+        .filter(n => n.length > 0);
+        
+      if (names.length === 0) return;
+      onBulkAdd(names, type, rating);
+      setBulkNames('');
+      setIsBulk(false);
+    } else {
+      if (!name.trim()) return;
+      onAdd(name, type, rating);
+      setName('');
+    }
   };
 
   return (
-    <motion.form
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      onSubmit={handleSubmit}
-      className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4 shadow-xl"
-    >
-      <div className="space-y-2">
-        <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Nome do Craque</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Ex: Ronaldinho"
-          className="w-full bg-slate-950 border border-slate-800 text-white p-3 rounded-xl focus:outline-none focus:border-green-500 transition-all"
-        />
+    <div className="space-y-4">
+      <div className="flex items-center justify-between px-1">
+        <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+          {isBulk ? 'Adição em Massa' : 'Novo Jogador'}
+        </label>
+        <button 
+          type="button"
+          onClick={() => setIsBulk(!isBulk)}
+          className="text-[8px] font-black uppercase tracking-widest text-green-500 hover:text-green-400 underline underline-offset-4"
+        >
+          {isBulk ? 'Modo Simples' : 'Modo em Lista'}
+        </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Posição</label>
-          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
-            <button
-              type="button"
-              onClick={() => { setType('player'); setRating(3); }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg transition-all ${
-                type === 'player' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              <Users size={16} />
-              <span className="text-sm font-medium">Linha</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setType('goalkeeper'); setRating(2); }}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg transition-all ${
-                type === 'goalkeeper' ? 'bg-green-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'
-              }`}
-            >
-              <Shield size={16} />
-              <span className="text-sm font-medium">Goleiro</span>
-            </button>
+      <form onSubmit={handleSubmit} className="space-y-4 bg-slate-950/30 p-4 rounded-2xl border border-slate-800/50">
+        {isBulk ? (
+          <div className="space-y-2">
+             <textarea 
+               value={bulkNames}
+               onChange={(e) => setBulkNames(e.target.value)}
+               placeholder="João Silva&#10;Mateus Oliveira&#10;Lucas Santos..."
+               rows={6}
+               className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all text-sm font-medium"
+             />
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-xs font-bold uppercase tracking-widest text-slate-500">Nível</label>
-          <div className="h-[42px] flex items-center justify-center bg-slate-950 rounded-xl border border-slate-800 px-4">
-            <StarRating
-              rating={rating}
-              max={type === 'player' ? 5 : 3}
-              onChange={setRating}
+        ) : (
+          <div className="space-y-2">
+            <input 
+              type="text" 
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Nome do craque..."
+              className="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl outline-none focus:border-green-500/50 focus:ring-1 focus:ring-green-500/50 transition-all text-sm font-medium"
             />
           </div>
-        </div>
-      </div>
+        )}
 
-      <button
-        type="submit"
-        disabled={!name.trim()}
-        className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:hover:bg-green-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98]"
-      >
-        <Plus size={20} />
-        ADICIONAR
-      </button>
-    </motion.form>
+        <div className="flex gap-2">
+          <button 
+            type="button"
+            onClick={() => setType('player')}
+            className={`flex-1 p-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${type === 'player' ? 'bg-green-600 text-slate-950' : 'bg-slate-900 text-slate-500 border border-slate-800'}`}
+          >
+            Linha
+          </button>
+          <button 
+            type="button"
+            onClick={() => setType('goalkeeper')}
+            className={`flex-1 p-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${type === 'goalkeeper' ? 'bg-green-600 text-slate-950' : 'bg-slate-900 text-slate-500 border border-slate-800'}`}
+          >
+            Goleiro
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between px-1">
+          <div className="flex gap-1 group/stars">
+            {[1,2,3,4,5].map(r => (
+              <button 
+                key={`rating-${r}`} 
+                type="button" 
+                onClick={() => setRating(r)}
+                className="transition-transform hover:scale-125 active:scale-95"
+              >
+                <Star 
+                  size={14} 
+                  className={`${r <= rating ? 'fill-green-500 text-green-500' : 'text-slate-800'} transition-colors`} 
+                />
+              </button>
+            ))}
+          </div>
+          
+          <button 
+            type="submit" 
+            className="p-2 bg-green-500 rounded-lg text-slate-950 hover:bg-green-400 transition-all active:scale-90"
+          >
+            {isBulk ? <Sparkles size={16} /> : <UserPlus size={16} />}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }

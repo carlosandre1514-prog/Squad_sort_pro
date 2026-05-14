@@ -1,1 +1,20 @@
 @import "tailwindcss";
+
+:root {
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-space-grotesk);
+}
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui;
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui;
+}
+
+body {
+  @apply bg-slate-950 text-slate-200 antialiased;
+}
+
+/* Custom transitions */
+.page-transition {
+  @apply transition-all duration-300 ease-in-out;
+}

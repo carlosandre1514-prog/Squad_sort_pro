@@ -1,26 +1,41 @@
-import type {Metadata} from 'next';
-import { Space_Grotesk, Inter } from 'next/font/google';
-import './globals.css';
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  variable: '--font-display',
-});
+import type { Metadata } from "next";
+import { Inter, Space_Grotesk } from "next/font/google";
+import "./globals.css";
 
 const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-sans',
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: 'Sorteador Pro | Futebol',
-  description: 'Sorteio inteligente de times de futebol com equilíbrio de nível.',
+  title: "Racha da Resenha",
+  description: "O melhor gerenciador de peladas. Sorteio de times e chaveamento profissional.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+  },
 };
 
-export default function RootLayout({children}: {children: React.ReactNode}) {
+export const viewport = {
+  themeColor: "#16a34a",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="pt-BR" className={`${spaceGrotesk.variable} ${inter.variable} dark`}>
-      <body className="bg-slate-950 text-slate-200 font-sans antialiased selection:bg-green-500 selection:text-black min-h-screen">
+    <html lang="pt-BR" className="dark" suppressHydrationWarning>
+      <body className={`${inter.variable} ${spaceGrotesk.variable} antialiased selection:bg-green-500 selection:text-black bg-slate-950`}>
         {children}
       </body>
     </html>

@@ -1,0 +1,25 @@
+{
+  "entities": {
+    "Player": {
+      "title": "Player",
+      "description": "A football player in the database",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["player", "goalkeeper"] },
+        "rating": { "type": "number" },
+        "isActive": { "type": "boolean" },
+        "ownerId": { "type": "string" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["id", "name", "type", "rating", "isActive", "ownerId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "players": {
+      "schema": "Player",
+      "description": "Collection of players managed by users"
+    }
+  }
+}
